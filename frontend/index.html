@@ -283,14 +283,16 @@
                 }
 
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || `HTTP ${response.status}`);
                 }
 
                 const apiResult = await response.json();
                 
+                // Atualizar estrutura para nova API
                 AppState.currentData = apiResult.data;
-                AppState.totalRecords = apiResult.total;
-                AppState.totalPages = Math.ceil(apiResult.total / CONFIG.PAGE_SIZE);
+                AppState.totalRecords = apiResult.pagination?.total_records || 0;
+                AppState.totalPages = apiResult.pagination?.total_pages || 0;
                 AppState.currentPage = page;
 
                 renderTable();
@@ -298,7 +300,7 @@
                 
             } catch (error) {
                 console.error("Erro ao carregar métricas:", error);
-                Elements.metricsTable.innerHTML = '<tr><td colspan="100%">Erro ao carregar métricas. Tente novamente.</td></tr>';
+                Elements.metricsTable.innerHTML = `<tr><td colspan="100%">Erro ao carregar métricas: ${error.message}. Tente novamente.</td></tr>`;
             } finally {
                 showLoading(false);
             }
@@ -306,8 +308,8 @@
 
         function buildMetricsUrl(page = 1) {
             const params = new URLSearchParams({
-                limit: CONFIG.PAGE_SIZE,
-                offset: (page - 1) * CONFIG.PAGE_SIZE
+                page: page,
+                limit: CONFIG.PAGE_SIZE
             });
 
             if (AppState.filters.startDate) {
@@ -318,6 +320,7 @@
             }
             if (AppState.currentOrder) {
                 params.append("order_by", AppState.currentOrder);
+                params.append("order_desc", AppState.currentOrderDir === "desc");
             }
 
             return `${CONFIG.API_URL}/metrics?${params}`;
