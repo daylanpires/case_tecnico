@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Métricas - Marketing Digital</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 40px; 
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        #metrics { margin-top: 30px; }
+        table { 
+            border-collapse: collapse; 
+            width: 100%; 
+            margin-top: 20px;
+        }
+        th, td { 
+            border: 1px solid #ddd; 
+            padding: 12px 8px; 
+            text-align: left; 
+        }
+        th { 
+            background: #f8f9fa; 
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+        }
+        th:hover { background: #e9ecef; }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: inline-block;
+            margin-right: 15px;
+            font-weight: bold;
+        }
+        input, button {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled { 
+            background: #6c757d; 
+            cursor: not-allowed; 
+        }
+        .error { color: #dc3545; margin-top: 10px; }
+        .pagination {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Formulário de Login -->
+        <div id="loginSection">
+            <h2>Login - Sistema de Métricas</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <input type="text" id="username" placeholder="Email/Usuário" required>
+                </div>
+                <div class="form-group">
+                    <input type="password" id="password" placeholder="Senha" required>
+                </div>
+                <button type="submit">Entrar</button>
+            </form>
+            <div id="loginError" class="error"></div>
+        </div>
+
+        <!-- Seção de Métricas -->
+        <div id="metricsSection" style="display:none;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2>Dashboard de Métricas</h2>
+                <button id="logoutBtn">Sair</button>
+            </div>
+
+            <!-- Filtros -->
+            <div id="filters" style="display:none; background: #f8f9fa; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+                <h4>Filtros</h4>
+                <div class="form-group">
+                    <label>Data inicial:</label>
+                    <input type="date" id="startDate">
+                    <label>Data final:</label>
+                    <input type="date" id="endDate">
+                    <button id="applyFilters">Filtrar</button>
+                </div>
+            </div>
+
+            <!-- Paginação Superior -->
+            <div id="pagination" class="pagination" style="display:none;"></div>
+
+            <!-- Tabela de Dados -->
+            <div id="tableContainer">
+                <div id="loading" class="loading">Carregando métricas...</div>
+                <table id="metricsTable" style="display:none;"></table>
+            </div>
+
+            <!-- Paginação Inferior -->
+            <div id="paginationBottom" class="pagination" style="display:none;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Configurações globais
+        const CONFIG = {
+            API_URL: "http://localhost:8000",
+            PAGE_SIZE: 50,
+            TOKEN_KEY: "auth_token"
+        };
+
+        // Estado da aplicação
+        const AppState = {
+            userRole: null,
+            currentOrder: null,
+            currentOrderDir: "asc",
+            currentPage: 1,
+            totalPages: 0,
+            totalRecords: 0,
+            currentData: [],
+            filters: {
+                startDate: "",
+                endDate: ""
+            }
+        };
+
+        // Elementos DOM
+        const Elements = {
+            loginSection: document.getElementById("loginSection"),
+            metricsSection: document.getElementById("metricsSection"),
+            loginForm: document.getElementById("loginForm"),
+            loginError: document.getElementById("loginError"),
+            logoutBtn: document.getElementById("logoutBtn"),
+            filters: document.getElementById("filters"),
+            applyFilters: document.getElementById("applyFilters"),
+            startDate: document.getElementById("startDate"),
+            endDate: document.getElementById("endDate"),
+            loading: document.getElementById("loading"),
+            metricsTable: document.getElementById("metricsTable"),
+            pagination: document.getElementById("pagination"),
+            paginationBottom: document.getElementById("paginationBottom")
+        };
+
+        // Inicialização da aplicação
+        document.addEventListener("DOMContentLoaded", function() {
+            initializeApp();
+            setupEventListeners();
+        });
+
+        function initializeApp() {
+            // Verificar se há token salvo
+            const token = localStorage.getItem(CONFIG.TOKEN_KEY);
+            if (token) {
+                showMetricsSection();
+                loadMetrics();
+            }
+        }
+
+        function setupEventListeners() {
+            // Login
+            Elements.loginForm.addEventListener("submit", handleLogin);
+            
+            // Logout
+            Elements.logoutBtn.addEventListener("click", handleLogout);
+            
+            // Filtros
+            Elements.applyFilters.addEventListener("click", handleApplyFilters);
+        }
+
+        // Funções de autenticação
+        async function handleLogin(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+            
+            try {
+                const response = await fetch(`${CONFIG.API_URL}/login`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    localStorage.setItem(CONFIG.TOKEN_KEY, data.access_token);
+                    
+                    // Extrair role do token
+                    const payload = JSON.parse(atob(data.access_token.split('.')[1]));
+                    AppState.userRole = payload.role;
+                    
+                    showMetricsSection();
+                    await loadMetrics();
+                } else {
+                    showError("Usuário ou senha inválidos.");
+                }
+            } catch (error) {
+                showError("Erro de conexão com o servidor.");
+                console.error("Erro no login:", error);
+            }
+        }
+
+        function handleLogout() {
+            localStorage.removeItem(CONFIG.TOKEN_KEY);
+            resetAppState();
+            showLoginSection();
+        }
+
+        function resetAppState() {
+            AppState.userRole = null;
+            AppState.currentPage = 1;
+            AppState.totalPages = 0;
+            AppState.totalRecords = 0;
+            AppState.currentData = [];
+            AppState.currentOrder = null;
+            AppState.currentOrderDir = "asc";
+            AppState.filters = { startDate: "", endDate: "" };
+        }
+
+        // Funções de interface
+        function showLoginSection() {
+            Elements.loginSection.style.display = "block";
+            Elements.metricsSection.style.display = "none";
+            Elements.loginError.textContent = "";
+        }
+
+        function showMetricsSection() {
+            Elements.loginSection.style.display = "none";
+            Elements.metricsSection.style.display = "block";
+            Elements.filters.style.display = "block";
+        }
+
+        function showError(message) {
+            Elements.loginError.textContent = message;
+        }
+
+        function showLoading(show = true) {
+            Elements.loading.style.display = show ? "block" : "none";
+            Elements.metricsTable.style.display = show ? "none" : "table";
+        }
+
+        // Funções de métricas
+        async function loadMetrics(page = 1) {
+            showLoading(true);
+            
+            const token = localStorage.getItem(CONFIG.TOKEN_KEY);
+            if (!token) {
+                handleLogout();
+                return;
+            }
+
+            try {
+                const url = buildMetricsUrl(page);
+                
+                const response = await fetch(url, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+
+                if (response.status === 401) {
+                    showError("Sessão expirada. Faça login novamente.");
+                    handleLogout();
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const apiResult = await response.json();
+                
+                AppState.currentData = apiResult.data;
+                AppState.totalRecords = apiResult.total;
+                AppState.totalPages = Math.ceil(apiResult.total / CONFIG.PAGE_SIZE);
+                AppState.currentPage = page;
+
+                renderTable();
+                renderPagination();
+                
+            } catch (error) {
+                console.error("Erro ao carregar métricas:", error);
+                Elements.metricsTable.innerHTML = '<tr><td colspan="100%">Erro ao carregar métricas. Tente novamente.</td></tr>';
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function buildMetricsUrl(page = 1) {
+            const params = new URLSearchParams({
+                limit: CONFIG.PAGE_SIZE,
+                offset: (page - 1) * CONFIG.PAGE_SIZE
+            });
+
+            if (AppState.filters.startDate) {
+                params.append("start_date", AppState.filters.startDate);
+            }
+            if (AppState.filters.endDate) {
+                params.append("end_date", AppState.filters.endDate);
+            }
+            if (AppState.currentOrder) {
+                params.append("order_by", AppState.currentOrder);
+            }
+
+            return `${CONFIG.API_URL}/metrics?${params}`;
+        }
+
+        function renderTable() {
+            if (!AppState.currentData.length) {
+                Elements.metricsTable.innerHTML = '<tr><td colspan="100%">Nenhum dado encontrado.</td></tr>';
+                Elements.pagination.style.display = "none";
+                Elements.paginationBottom.style.display = "none";
+                return;
+            }
+
+            // Filtrar colunas baseado no role do usuário
+            let columns = Object.keys(AppState.currentData[0]);
+            if (AppState.userRole !== "admin") {
+                columns = columns.filter(col => col !== "cost_micros");
+            }
+
+            // Gerar cabeçalho
+            let html = "<thead><tr>";
+            columns.forEach(col => {
+                const sortIcon = AppState.currentOrder === col ? 
+                    (AppState.currentOrderDir === "asc" ? " ↑" : " ↓") : " ↕";
+                html += `<th onclick="handleSort('${col}')" title="Clique para ordenar">
+                    ${formatColumnName(col)}${sortIcon}
+                </th>`;
+            });
+            html += "</tr></thead><tbody>";
+
+            // Gerar linhas de dados
+            AppState.currentData.forEach(row => {
+                html += "<tr>";
+                columns.forEach(col => {
+                    const value = row[col] || "-";
+                    html += `<td>${formatCellValue(col, value)}</td>`;
+                });
+                html += "</tr>";
+            });
+            html += "</tbody>";
+
+            Elements.metricsTable.innerHTML = html;
+        }
+
+        function formatColumnName(col) {
+            const columnNames = {
+                account_id: "ID da Conta",
+                campaign_id: "ID da Campanha", 
+                cost_micros: "Custo (micros)",
+                clicks: "Cliques",
+                conversions: "Conversões",
+                impressions: "Impressões",
+                interactions: "Interações",
+                date: "Data"
+            };
+            return columnNames[col] || col;
+        }
+
+        function formatCellValue(column, value) {
+            if (column === "date") {
+                return new Date(value).toLocaleDateString('pt-BR');
+            }
+            if (typeof value === 'number') {
+                return value.toLocaleString('pt-BR');
+            }
+            return value;
+        }
+
+        function renderPagination() {
+            if (AppState.totalPages <= 1) {
+                Elements.pagination.style.display = "none";
+                Elements.paginationBottom.style.display = "none";
+                return;
+            }
+
+            const paginationHtml = `
+                <button onclick="goToPage(${AppState.currentPage - 1})" 
+                        ${AppState.currentPage === 1 ? 'disabled' : ''}>
+                    ← Anterior
+                </button>
+                <span style="margin: 0 15px;">
+                    Página ${AppState.currentPage} de ${AppState.totalPages} 
+                    (${AppState.totalRecords.toLocaleString('pt-BR')} registros)
+                </span>
+                <button onclick="goToPage(${AppState.currentPage + 1})" 
+                        ${AppState.currentPage === AppState.totalPages ? 'disabled' : ''}>
+                    Próxima →
+                </button>
+            `;
+
+            Elements.pagination.innerHTML = paginationHtml;
+            Elements.paginationBottom.innerHTML = paginationHtml;
+            Elements.pagination.style.display = "block";
+            Elements.paginationBottom.style.display = "block";
+        }
+
+        // Event handlers
+        function handleApplyFilters() {
+            AppState.filters.startDate = Elements.startDate.value;
+            AppState.filters.endDate = Elements.endDate.value;
+            AppState.currentPage = 1;
+            loadMetrics(1);
+        }
+
+        function handleSort(column) {
+            if (AppState.currentOrder === column) {
+                AppState.currentOrderDir = AppState.currentOrderDir === "asc" ? "desc" : "asc";
+            } else {
+                AppState.currentOrder = column;
+                AppState.currentOrderDir = "asc";
+            }
+            AppState.currentPage = 1;
+            loadMetrics(1);
+        }
+
+        function goToPage(page) {
+            if (page >= 1 && page <= AppState.totalPages && page !== AppState.currentPage) {
+                loadMetrics(page);
+            }
+        }
+    </script>
+</body>
+</html>

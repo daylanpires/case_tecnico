@@ -1,17 +1,42 @@
-# Case Engenharia - Sistema de Métricas
+# Sistema de Autenticação e Métricas
 
-## Descrição
-Aplicação web para gestores de uma agência de Marketing Digital, exibindo dados de performance a partir de arquivos CSV.
+Sistema completo de autenticação JWT com dashboard de métricas desenvolvido em FastAPI (backend) e JavaScript vanilla (frontend).
 
-## Estrutura
-- `backend/` → API em Python (FastAPI).
-- `frontend/` → páginas HTML/JS.
-- `data/` → arquivos CSV de entrada.
-- `docs/` → documentação adicional.
+## 🚀 Funcionalidades
 
-## Requisitos
-- Python 3.9+
-- Node.js (se optar por React no frontend)
+### Autenticação
+- ✅ Login seguro com JWT
+- ✅ Hash de senhas com bcrypt
+- ✅ Middleware de autenticação
+- ✅ Controle de acesso baseado em roles (admin/analyst)
+- ✅ Validação de tokens
+
+### Dashboard de Métricas
+- ✅ Visualização de dados de campanhas
+- ✅ Paginação server-side para performance
+- ✅ Filtros por data (início/fim)
+- ✅ Ordenação por colunas
+- ✅ Controle de acesso baseado em role
+- ✅ Interface responsiva
+
+## 🛠️ Tecnologias
+
+### Backend
+- **FastAPI** - Framework web moderno e rápido
+- **bcrypt** - Hash seguro de senhas
+- **python-jose** - Geração e validação de tokens JWT
+- **pandas** - Manipulação de dados CSV
+- **uvicorn** - Servidor ASGI
+
+### Frontend
+- **HTML5** - Estrutura semântica
+- **CSS3** - Estilização moderna
+- **JavaScript ES6+** - Lógica da aplicação
+- **Fetch API** - Comunicação com backend
+
+### Dados
+- **CSV** - Armazenamento de usuários e métricas
+- **JWT** - Autenticação stateless
 
 ## Como rodar o backend
 1. Certifique-se de que o ambiente virtual está ativado.
