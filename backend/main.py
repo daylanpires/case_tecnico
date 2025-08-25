@@ -7,8 +7,6 @@ API desenvolvida com FastAPI que oferece:
 - Paginação e filtros avançados
 - Middleware CORS para integração frontend
 
-Autor: Desenvolvido para processo seletivo
-Versão: 1.0.0
 """
 
 import os
