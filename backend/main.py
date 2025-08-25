@@ -60,8 +60,8 @@ app = FastAPI(
     - 🚀 Performance otimizada para grandes volumes de dados
     
     **Usuários de teste:**
-    - admin/admin123 (acesso completo)
-    - user/user123 (acesso limitado)
+    - user1/oeiruhn56146 (acesso completo)
+    - user2/908ijofff (acesso limitado)
     """,
     version="1.0.0",
     contact={
@@ -285,7 +285,7 @@ async def get_current_user(request: Request) -> Dict[str, Any]:
     Returns:
         dict: Dados do usuário decodificados do token
             - email: Email/username do usuário
-            - role: Role/papel do usuário (admin, user, etc)
+            - role: Role/função do usuário (admin, user, etc)
             - exp: Timestamp de expiração
             - iat: Timestamp de criação
             
@@ -393,8 +393,8 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     4. Retorna token para uso em requisições subsequentes
     
     **Usuários de teste disponíveis:**
-    - `admin` / `admin123` → Acesso completo (vê dados financeiros)
-    - `user` / `user123` → Acesso limitado (sem dados sensíveis)
+    - `admin` / `user1` → Acesso completo (vê dados financeiros)
+    - `user` / `user2` → Acesso limitado (sem dados sensíveis)
     
     **Como usar o token:**
     ```
